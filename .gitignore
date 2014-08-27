@@ -10,3 +10,6 @@ build
 gradle.properties
 *.keystore
 local.properties
+
+# ignore ctags
+tags
