@@ -28,9 +28,11 @@ public final class StumblerBundleReceiver {
             Log.w(LOGTAG, "Failed to convert bundle to JSON: " + e);
             return;
         }
-            if (AppGlobals.isDebug) Log.d(LOGTAG, "Received bundle: " + mlsObj.toString());
+        if (AppGlobals.isDebug) {
+            Log.d(LOGTAG, "Received bundle: " + mlsObj.toString());
+        }
 
-            AppGlobals.guiLogInfo(mlsObj.toString());
+        AppGlobals.guiLogInfo(mlsObj.toString());
 
         try {
 

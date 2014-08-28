@@ -1,12 +1,14 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package org.mozilla.mozstumbler.client;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.IBinder;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import org.mozilla.mozstumbler.service.StumblerService;
-
 
 /** Test low power in adb with am broadcast -a android.intent.action.BATTERY_LOW
  * Test cancel button in notification list by swiping down on the entry for the
@@ -19,16 +21,8 @@ public final class TurnOffReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         Log.d(LOGTAG, "onReceive!");
 
-        Intent serviceIntent = new Intent(context, StumblerService.class);
-        IBinder binder = peekService(context, serviceIntent);
-        if (binder != null) {
-            // service is running, tell it to stop
-            StumblerService.StumblerBinder serviceBinder = (StumblerService.StumblerBinder) binder;
-            StumblerService service = serviceBinder.getService();
-            service.stopScanning();
-        }
-
         // In the case where the MainActivity is in the foreground, we need to tell it to update
-        context.sendBroadcast(new Intent(MainActivity.ACTION_UPDATE_UI));
+        LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(MainActivity.ACTION_UI_TOGGLE_SCAN));
+
     }
 }

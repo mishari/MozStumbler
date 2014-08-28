@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package org.mozilla.mozstumbler.client;
 
 import android.annotation.TargetApi;
@@ -16,6 +20,8 @@ import android.os.StrictMode;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.widget.CompoundButton;
+
 import java.io.File;
 import org.mozilla.mozstumbler.BuildConfig;
 import org.mozilla.mozstumbler.R;
@@ -39,7 +45,7 @@ public class MainApp extends Application {
     private MainActivity mMainActivity;
     private final long MAX_BYTES_DISK_STORAGE = 1000 * 1000 * 20; // 20MB for MozStumbler by default, is ok?
     private final int MAX_WEEKS_OLD_STORED = 4;
-    private static final String INTENT_TURN_OFF = "org.mozilla.mozstumbler.turnMeOff";
+    public  static final String INTENT_TURN_OFF = "org.mozilla.mozstumbler.turnMeOff";
     private static final int    NOTIFICATION_ID = 1;
 
     public Prefs getPrefs() {
@@ -116,8 +122,9 @@ public class MainApp extends Application {
             unbindService(mConnection);
         mConnection = null;
         mStumblerService = null;
-        if (mReceiver != null)
+        if (mReceiver != null) {
             mReceiver.unregister();
+        }
         mReceiver = null;
         Log.d(LOGTAG, "onStop");
     }
@@ -135,7 +142,7 @@ public class MainApp extends Application {
         uploader.execute();
     }
 
-    public void toggleScanning(MainActivity caller) {
+    public synchronized void toggleScanning(MainActivity caller) {
         boolean scanning = mStumblerService.isScanning();
 
         if (scanning) {
@@ -174,8 +181,8 @@ public class MainApp extends Application {
                 intentFilter.addAction(WifiScanner.ACTION_WIFIS_SCANNED);
                 intentFilter.addAction(CellScanner.ACTION_CELLS_SCANNED);
                 intentFilter.addAction(GPSScanner.ACTION_GPS_UPDATED);
-                intentFilter.addAction(MainActivity.ACTION_UNPAUSE_SCANNING);
                 intentFilter.addAction(MainActivity.ACTION_UPDATE_UI);
+                intentFilter.addAction(INTENT_TURN_OFF);
                 LocalBroadcastManager.getInstance(MainApp.this).registerReceiver(this, intentFilter);
             }
         }
@@ -197,14 +204,9 @@ public class MainApp extends Application {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-
             String action = intent.getAction();
-
             if (action.equals(GPSScanner.ACTION_GPS_UPDATED)) {
                 receivedGpsMessage(intent);
-            } else if (action.equals(MainActivity.ACTION_UNPAUSE_SCANNING) &&
-                    null != mStumblerService) {
-                startScanning();
             }
 
             if (mMainActivity != null) {
@@ -234,6 +236,5 @@ public class MainApp extends Application {
                 .addAction(R.drawable.ic_action_cancel,
                         getString(R.string.stop_scanning), pendingIntent)
                 .build();
-
     }
 }

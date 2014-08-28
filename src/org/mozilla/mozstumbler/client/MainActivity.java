@@ -1,10 +1,15 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package org.mozilla.mozstumbler.client;
 
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
+import android.content.IntentFilter;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
@@ -12,6 +17,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -37,13 +43,35 @@ public final class MainActivity extends FragmentActivity {
     public static final String ACTION_UPDATE_UI = ACTION_BASE + "UPDATE_UI";
 
     /** if service exists, start scanning, otherwise do nothing  */
-    public static final String ACTION_UNPAUSE_SCANNING = ACTION_BASE + "UNPAUSE_SCANNING";
+    public static final String ACTION_UI_UNPAUSE_SCANNING = ACTION_BASE + "UNPAUSE_SCANNING";
+    public static final String ACTION_UI_TOGGLE_SCAN = ACTION_BASE + "TOGGLE_SCAN";
 
     private static final String LEADERBOARD_URL = "https://location.services.mozilla.com/leaders";
 
     int                      mGpsFixes;
     int                      mGpsSats;
     private boolean          mGeofenceHere = false;
+
+
+    private BroadcastReceiver bReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(LOGTAG, "-------- MainActivity::BroadcastReceiver received: " + intent.getAction());
+            StumblerService service = getApp().getService();
+            if (service == null) {
+                return;
+            }
+            boolean scanning = service.isScanning();
+            CompoundButton scanningBtn = (CompoundButton) findViewById(R.id.toggle_scanning);
+
+            if (intent.getAction().equals(MainActivity.ACTION_UI_TOGGLE_SCAN)) {
+                // Grab the scanning button and just click it
+                MainActivity.this.onToggleScanningClicked(scanningBtn);
+            } else if (intent.getAction().equals(MainActivity.ACTION_UI_UNPAUSE_SCANNING) && !scanning) {
+                MainActivity.this.onToggleScanningClicked(scanningBtn);
+            }
+        }
+    };
 
     private MainApp getApp() {
         return (MainApp) this.getApplication();
@@ -83,6 +111,12 @@ public final class MainActivity extends FragmentActivity {
             Updater.checkForUpdates(this);
         }
 
+        // Register a listener for a toggle event in the notification pulldown
+        LocalBroadcastManager bManager = LocalBroadcastManager.getInstance(this);
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(MainActivity.ACTION_UI_TOGGLE_SCAN);
+        intentFilter.addAction(MainActivity.ACTION_UI_UNPAUSE_SCANNING);
+        bManager.registerReceiver(bReceiver, intentFilter);
         Log.d(LOGTAG, "onCreate");
     }
 
@@ -126,9 +160,6 @@ public final class MainActivity extends FragmentActivity {
         }
 
         boolean scanning = service.isScanning();
-
-        CompoundButton scanningBtn = (CompoundButton) findViewById(R.id.toggle_scanning);
-        scanningBtn.setChecked(scanning);
 
         int locationsScanned = 0;
         double latitude = 0;
@@ -179,7 +210,19 @@ public final class MainActivity extends FragmentActivity {
    }
 
     public void onToggleScanningClicked(View v) {
+        Log.d(LOGTAG, "Toggling button click");
+
         getApp().toggleScanning(this);
+
+        StumblerService service = getApp().getService();
+        if (service == null) {
+            return;
+        }
+
+        boolean scanning = service.isScanning();
+        CompoundButton scanningBtn = (CompoundButton) findViewById(R.id.toggle_scanning);
+        scanningBtn.setChecked(scanning);
+        this.updateUiOnMainThread();
     }
 
     @Override
